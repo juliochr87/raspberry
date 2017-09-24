@@ -2,14 +2,23 @@ import RPi.GPIO as GPIO
 import time
 import sys
 from hx711 import HX711
+import sys
+import pyrebase
 
+config = {
+  "apiKey": "LmWlEhmUCCOG792VNGzBS1oMTIO53yoFixuWFQ2K",
+  "authDomain": "",
+  "databaseURL": "https://pc-silos.firebaseio.com",
+  "storageBucket": ""
+}
+
+firebase = pyrebase.initialize_app(config)
+db = firebase.database()
 def cleanAndExit():
-    print "Cleaning..."
     GPIO.cleanup()
-    print "Bye!"
     sys.exit()
 
-hx = HX711(5, 6)
+hx = HX711(int(sys.argv[2]), int(sys.argv[3]))
 
 # I've found out that, for some reason, the order of the bytes is not always the same between versions of python, numpy and the hx711 itself.
 # Still need to figure out why does it change.
@@ -26,26 +35,25 @@ hx.set_reading_format("LSB", "MSB")
 # and I got numbers around 184000 when I added 2kg. So, according to the rule of thirds:
 # If 2000 grams is 184000 then 1000 grams is 184000 / 2000 = 92.
 #hx.set_reference_unit(113)
-hx.set_reference_unit(150388.21)
+hx.set_reference_unit(12131)
 
 hx.reset()
 #hx.tare()
 
-while True:
-    try:
-        # These three lines are usefull to debug wether to use MSB or LSB in the reading formats
-        # for the first parameter of "hx.set_reading_format("LSB", "MSB")".
-        # Comment the two lines "val = hx.get_weight(5)" and "print val" and uncomment the three lines to see what it prints.
-        #np_arr8_string = hx.get_np_arr8_string()
-        #binary_string = hx.get_binary_string()
-        #print binary_string + " " + np_arr8_string
+# These three lines are usefull to debug wether to use MSB or LSB in the reading formats
+# for the first parameter of "hx.set_reading_format("LSB", "MSB")".
+# Comment the two lines "val = hx.get_weight(5)" and "print val" and uncomment the three lines to see what it prints.
+#np_arr8_string = hx.get_np_arr8_string()
+#binary_string = hx.get_binary_string()
+#print binary_string + " " + np_arr8_string
         
-        # Prints the weight. Comment if you're debbuging the MSB and LSB issue.
-        val = hx.get_weight(5)
-        print val
+# Prints the weight. Comment if you're debbuging the MSB and LSB issue.
+val = hx.get_weight(5)-694
+print (val)
+data = {"fecha":time.strftime("%m/%d/%Y"),"peso":val }
+db.child("silos/"+sys.argv[1]).set(data)
 
-        hx.power_down()
-        hx.power_up()
-        time.sleep(0.5)
-    except (KeyboardInterrupt, SystemExit):
-        cleanAndExit()
+hx.power_down()
+hx.power_up()
+time.sleep(0.5)
+cleanAndExit()
